@@ -1,0 +1,13 @@
+NET "d6_led" IOSTANDARD = LVCMOS33;
+NET "d6_led" LOC = T9;
+INST "d6_led_OBUF" LOC = T9;
+NET "CLK25" IOSTANDARD = LVCMOS18;
+NET "CLK25" LOC = J6;
+NET "blue_led" LOC = T8;
+NET "blue_led" IOSTANDARD = LVCMOS33;
+NET "gren_led" LOC = R9;
+NET "gren_led" IOSTANDARD = LVCMOS33;
+NET "debug_pin" LOC = H16;
+NET "debug_pin" IOSTANDARD = LVCMOS33;
+NET "fpga_led" LOC = F16;
+NET "fpga_led" IOSTANDARD = LVCMOS33;

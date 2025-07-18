@@ -1,0 +1,52 @@
+# ISE и Vivado временные файлы
+temp/
+*.log
+*.jou
+*.backup
+*~
+
+# Файлы синтеза
+*.ngc
+*.ngd
+*.ngr
+*.ncd
+*.pcf
+*.bld
+*.mrp
+*.map
+*.par
+*.pad
+*.drc
+*.bgn
+*.xpi
+*.stx
+*.syr
+*.lso
+*.cmd_log
+*.ptwx
+*.unroutes
+*.xwbt
+
+# Отчеты
+*.xrpt
+*.html
+*.xml
+*.csv
+*.txt
+usage_statistics_webtalk.html
+
+# Служебные директории
+_xmsgs/
+_ngo/
+iseconfig/
+xlnx_auto_0_xdb/
+xst/
+.Xil/
+vivado*
+
+# Временные проектные файлы
+*.prj
+
+# OS файлы
+.DS_Store
+Thumbs.db
