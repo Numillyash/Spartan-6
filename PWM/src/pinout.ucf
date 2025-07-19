@@ -1,0 +1,32 @@
+# Файл ограничений для проекта sevenSeg
+# FPGA: xc6slx25-ftg256-3
+# Дата создания: 2025-07-19
+# Пины взяты из рабочего проекта в папке ../1
+
+# Тактовая частота (25 МГц клок)
+NET "clk" LOC = J6;
+NET "clk" IOSTANDARD = LVCMOS18;
+NET "clk" TNM_NET = "clk";
+TIMESPEC TS_clk = PERIOD "clk" 25 MHz HIGH 50%;
+
+# # Светодиод (используем fpga_led)
+# NET "led" LOC = F16;
+# NET "led" IOSTANDARD = LVCMOS33;
+
+# Отладочный вывод (используем зеленый светодиод)
+NET "led_green" LOC = R9;
+NET "led_green" IOSTANDARD = LVCMOS33;
+
+# Отладочный вывод (используем синий светодиод)
+NET "led_blue" LOC = T8;
+NET "led_blue" IOSTANDARD = LVCMOS33;
+
+# Отладочный вывод (используем красный светодиод)
+NET "led_red" LOC = T9;
+NET "led_red" IOSTANDARD = LVCMOS33;
+
+NET "debug_led" LOC = H16;
+NET "debug_led" IOSTANDARD = LVCMOS33;
+
+# Дополнительные ограничения
+# Добавьте здесь свои ограничения по мере необходимости

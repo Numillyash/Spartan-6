@@ -1,0 +1,25 @@
+//! **************************************************************************
+// Written by: Map P.20131013 on Sun Jul 20 00:04:24 2025
+//! **************************************************************************
+
+SCHEMATIC START;
+COMP "clk" LOCATE = SITE "J6" LEVEL 1;
+COMP "led_red" LOCATE = SITE "T9" LEVEL 1;
+COMP "led_green" LOCATE = SITE "R9" LEVEL 1;
+COMP "debug_led" LOCATE = SITE "H16" LEVEL 1;
+COMP "led_blue" LOCATE = SITE "T8" LEVEL 1;
+TIMEGRP clk = BEL "pwm_inst/led_reg" BEL "pwm_inst/pwm_counter_0" BEL
+        "pwm_inst/pwm_counter_1" BEL "pwm_inst/pwm_counter_2" BEL
+        "pwm_inst/pwm_counter_3" BEL "pwm_inst/pwm_counter_4" BEL
+        "pwm_inst/pwm_counter_5" BEL "pwm_inst/pwm_counter_6" BEL
+        "pwm_inst/pwm_counter_7" BEL "pwm_value_0" BEL "pwm_value_1" BEL
+        "pwm_value_2" BEL "pwm_value_3" BEL "pwm_value_4" BEL "pwm_value_5"
+        BEL "pwm_value_6" BEL "pwm_value_7" BEL "counter_0" BEL "counter_1"
+        BEL "counter_2" BEL "counter_3" BEL "counter_4" BEL "counter_5" BEL
+        "counter_6" BEL "counter_7" BEL "counter_8" BEL "counter_9" BEL
+        "counter_10" BEL "counter_11" BEL "counter_12" BEL "counter_13" BEL
+        "counter_14" BEL "counter_15" BEL "counter_16" BEL "counter_17" BEL
+        "counter_18" BEL "clk_BUFGP/BUFG";
+TS_clk = PERIOD TIMEGRP "clk" 25 MHz HIGH 50%;
+SCHEMATIC END;
+
