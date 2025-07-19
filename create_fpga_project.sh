@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# Скрипт для создания нового FPGA проекта со структурированной организацией файлов
-# Использование: ./create_fpga_project.sh <имя_проекта> [тип_FPGA]
+# Скрипт для создания нового FPGA проекта с поддержкой TerosHDL
+# Использование: ./create_fpga_project_with_teroshdl.sh <имя_проекта> [тип_FPGA]
 
 set -e
 
@@ -14,7 +14,7 @@ NC='\033[0m' # No Color
 
 # Функция для вывода справки
 show_help() {
-    echo -e "${BLUE}Создание нового FPGA проекта${NC}"
+    echo -e "${BLUE}Создание нового FPGA проекта с поддержкой TerosHDL${NC}"
     echo ""
     echo "Использование: $0 <имя_проекта> [тип_FPGA]"
     echo ""
@@ -53,39 +53,85 @@ if [ -d "$PROJECT_NAME" ]; then
     exit 1
 fi
 
-echo -e "${BLUE}Создание нового FPGA проекта: ${YELLOW}$PROJECT_NAME${NC}"
+echo -e "${BLUE}Создание нового FPGA проекта с TerosHDL: ${YELLOW}$PROJECT_NAME${NC}"
 echo -e "${BLUE}Тип FPGA: ${YELLOW}$FPGA_TYPE${NC}"
 echo ""
 
 # Создаем структуру директорий
 echo -e "${GREEN}📁 Создание структуры директорий...${NC}"
-mkdir -p "$PROJECT_NAME"/{src,build,scripts,temp,docs}
+mkdir -p "$PROJECT_NAME"/{src,build,scripts,temp,docs,bitstreams,reports,synthesis}
 
 # Устанавливаем параметры в зависимости от типа FPGA
 case $FPGA_TYPE in
     "spartan6")
         DEVICE="xc6slx25-ftg256-3"
+        FAMILY="spartan6"
+        PACKAGE="ftg256"
+        SPEED="-3"
         CLK_FREQ="25"
         ;;
     "spartan7")
         DEVICE="xc7s25-csga324-1"
+        FAMILY="spartan7"
+        PACKAGE="csga324"
+        SPEED="-1"
         CLK_FREQ="100"
         ;;
     "artix7")
         DEVICE="xc7a35t-cpg236-1"
+        FAMILY="artix7"
+        PACKAGE="cpg236"
+        SPEED="-1"
         CLK_FREQ="100"
         ;;
     *)
         echo -e "${YELLOW}Предупреждение: Неизвестный тип FPGA '$FPGA_TYPE', используются настройки Spartan-6${NC}"
         DEVICE="xc6slx25-ftg256-3"
+        FAMILY="spartan6"
+        PACKAGE="ftg256"
+        SPEED="-3"
         CLK_FREQ="25"
         ;;
 esac
 
 echo -e "${GREEN}📝 Создание файлов проекта...${NC}"
 
+# Создаем файл конфигурации TerosHDL
+cat > "$PROJECT_NAME/teroshdl.json" << TEROS_EOF
+{
+  "project": {
+    "name": "$PROJECT_NAME",
+    "description": "FPGA проект $PROJECT_NAME для $FPGA_TYPE",
+    "version": "1.0.0",
+    "fpga": {
+      "family": "$FAMILY",
+      "device": "${DEVICE%%-*}",
+      "package": "$PACKAGE",
+      "speed": "$SPEED"
+    }
+  },
+  "tools": {
+    "synthesizer": "xilinx",
+    "simulator": "ghdl",
+    "build_dir": "build"
+  },
+  "files": [
+    {
+      "path": "src/$PROJECT_NAME.v",
+      "type": "verilog",
+      "is_toplevel": true
+    },
+    {
+      "path": "src/pinout.ucf",
+      "type": "constraint"
+    }
+  ],
+  "toplevel": "$PROJECT_NAME"
+}
+TEROS_EOF
+
 # Создаем основной Verilog модуль
-cat > "$PROJECT_NAME/src/${PROJECT_NAME}.v" << EOF
+cat > "$PROJECT_NAME/src/${PROJECT_NAME}.v" << VERILOG_EOF
 \`timescale 1ns / 1ps
 
 /**
@@ -142,397 +188,295 @@ module $PROJECT_NAME (
     assign debug_pin = debug_reg;
 
 endmodule
-EOF
+VERILOG_EOF
 
 # Создаем файл ограничений
-cat > "$PROJECT_NAME/src/pinout.ucf" << EOF
+cat > "$PROJECT_NAME/src/pinout.ucf" << UCF_EOF
 # Файл ограничений для проекта $PROJECT_NAME
 # FPGA: $FPGA_TYPE ($DEVICE)
 # Дата создания: $(date +%Y-%m-%d)
 
 # Тактовая частота
-NET "clk" LOC = P123;  # Замените на реальный пин
+NET "clk" LOC = P123;  # Замените на реальный пин для вашей платы
 NET "clk" IOSTANDARD = LVCMOS33;
 NET "clk" TNM_NET = "clk";
 TIMESPEC TS_clk = PERIOD "clk" ${CLK_FREQ} MHz HIGH 50%;
 
 # Сброс
-NET "reset_n" LOC = P124;  # Замените на реальный пин  
+NET "reset_n" LOC = P124;  # Замените на реальный пин для вашей платы
 NET "reset_n" IOSTANDARD = LVCMOS33;
 NET "reset_n" PULLUP;
 
 # Светодиод
-NET "led" LOC = P125;  # Замените на реальный пин
+NET "led" LOC = P125;  # Замените на реальный пин для вашей платы
 NET "led" IOSTANDARD = LVCMOS33;
 NET "led" DRIVE = 8;
 NET "led" SLEW = SLOW;
 
 # Отладочный вывод
-NET "debug_pin" LOC = P126;  # Замените на реальный пин
+NET "debug_pin" LOC = P126;  # Замените на реальный пин для вашей платы
 NET "debug_pin" IOSTANDARD = LVCMOS33;
 NET "debug_pin" DRIVE = 8;
 NET "debug_pin" SLEW = FAST;
 
 # Дополнительные ограничения
 # Добавьте здесь свои ограничения по мере необходимости
-EOF
+UCF_EOF
 
-# Создаем скрипт компиляции
-cat > "$PROJECT_NAME/scripts/compile.sh" << 'EOF'
+# Создаем скрипт для распределения файлов сборки TerosHDL
+cat > "$PROJECT_NAME/scripts/copy_build_results.sh" << 'COPY_SCRIPT_EOF'
 #!/bin/bash
-# Скрипт автоматической компиляции FPGA проекта
 
-# Получаем имя проекта из имени директории
-PROJECT_NAME=$(basename "$(dirname "$(pwd)")")
-SRC_DIR="../src"
-BUILD_DIR="../build"
-TEMP_DIR="../temp"
+# Скрипт для копирования и распределения результатов сборки TerosHDL
+# по соответствующим папкам проекта
 
-# Проверяем наличие ISE
-if ! command -v xst &> /dev/null; then
-    echo "Ошибка: Xilinx ISE не найден в PATH"
-    echo "Запустите: source /opt/Xilinx/14.7/ISE_DS/settings64.sh"
+TEROSHDL_BUILD_DIR="/root/.teroshdl/build"
+PROJECT_DIR="$(dirname "$(dirname "$(realpath "$0")")")"
+
+# Директории назначения
+BUILD_DIR="$PROJECT_DIR/build"
+BITSTREAMS_DIR="$PROJECT_DIR/bitstreams" 
+REPORTS_DIR="$PROJECT_DIR/reports"
+SYNTHESIS_DIR="$PROJECT_DIR/synthesis"
+TEMP_DIR="$PROJECT_DIR/temp"
+
+# Создаем все необходимые директории
+mkdir -p "$BUILD_DIR" "$BITSTREAMS_DIR" "$REPORTS_DIR" "$SYNTHESIS_DIR" "$TEMP_DIR"
+
+echo "=== Копирование результатов сборки TerosHDL ==="
+echo "Источник: $TEROSHDL_BUILD_DIR"
+echo "Проект: $PROJECT_DIR"
+
+if [ ! -d "$TEROSHDL_BUILD_DIR" ]; then
+    echo "❌ ОШИБКА: Директория сборки TerosHDL не найдена: $TEROSHDL_BUILD_DIR"
+    echo "   Возможно, сборка еще не выполнялась через TerosHDL"
     exit 1
 fi
 
-echo "========================================="
-echo "Компиляция проекта: $PROJECT_NAME"
-echo "========================================="
+echo ""
+echo "📁 Распределение файлов по папкам:"
 
-# Создаем необходимые директории
-mkdir -p "$BUILD_DIR" "$TEMP_DIR"
+# 1. Битстримы и файлы программирования -> bitstreams/
+echo -n "  🔧 Битстримы и файлы программирования... "
+BITSTREAM_COUNT=0
+for ext in bit mcs bin; do
+    if cp "$TEROSHDL_BUILD_DIR"/*.$ext "$BITSTREAMS_DIR/" 2>/dev/null; then
+        BITSTREAM_COUNT=$((BITSTREAM_COUNT + $(ls "$TEROSHDL_BUILD_DIR"/*.$ext 2>/dev/null | wc -l)))
+    fi
+done
+echo "скопировано $BITSTREAM_COUNT файлов"
 
-# Проверяем наличие входных файлов
-if [ ! -f "$SRC_DIR/$PROJECT_NAME.v" ]; then
-    echo "ОШИБКА: Файл $SRC_DIR/$PROJECT_NAME.v не найден!"
-    exit 1
+# 2. Файлы синтеза -> synthesis/
+echo -n "  ⚙️  Файлы синтеза... "
+SYNTH_COUNT=0
+for ext in ngc ngd ncd pcf; do
+    if cp "$TEROSHDL_BUILD_DIR"/*.$ext "$SYNTHESIS_DIR/" 2>/dev/null; then
+        SYNTH_COUNT=$((SYNTH_COUNT + $(ls "$TEROSHDL_BUILD_DIR"/*.$ext 2>/dev/null | wc -l)))
+    fi
+done
+echo "скопировано $SYNTH_COUNT файлов"
+
+# 3. Отчеты -> reports/
+echo -n "  📊 Отчеты и анализ... "
+REPORT_COUNT=0
+for ext in xrpt mrp map par pad csv txt xml html; do
+    if cp "$TEROSHDL_BUILD_DIR"/*.$ext "$REPORTS_DIR/" 2>/dev/null; then
+        REPORT_COUNT=$((REPORT_COUNT + $(ls "$TEROSHDL_BUILD_DIR"/*.$ext 2>/dev/null | wc -l)))
+    fi
+done
+echo "скопировано $REPORT_COUNT файлов"
+
+# 4. Все остальные файлы -> build/ (для совместимости)
+echo -n "  📦 Остальные файлы сборки... "
+BUILD_COUNT=0
+find "$TEROSHDL_BUILD_DIR" -maxdepth 1 -type f \( \
+    -name "*.bgn" -o -name "*.bld" -o -name "*.drc" -o \
+    -name "*.lso" -o -name "*.prj" -o -name "*.xst" -o \
+    -name "*.syr" -o -name "*.cmd_log" -o -name "*.ptwx" -o \
+    -name "*.unroutes" -o -name "*.xpi" -o -name "*.stx" -o \
+    -name "*.ut" -o -name "*.twr" -o -name "*.twx" \) \
+    -exec cp {} "$BUILD_DIR/" \; 2>/dev/null || true
+BUILD_COUNT=$(find "$BUILD_DIR" -maxdepth 1 -type f 2>/dev/null | wc -l)
+echo "скопировано файлов в build/"
+
+# 5. Временные файлы -> temp/ (для отладки)
+echo -n "  🗂️  Временные файлы... "
+cp -r "$TEROSHDL_BUILD_DIR"/_ngo "$TEMP_DIR/" 2>/dev/null || true
+cp -r "$TEROSHDL_BUILD_DIR"/_xmsgs "$TEMP_DIR/" 2>/dev/null || true
+cp -r "$TEROSHDL_BUILD_DIR"/xlnx_auto_0_xdb "$TEMP_DIR/" 2>/dev/null || true
+cp -r "$TEROSHDL_BUILD_DIR"/xst "$TEMP_DIR/" 2>/dev/null || true
+TEMP_COUNT=$(find "$TEMP_DIR" -type f 2>/dev/null | wc -l)
+echo "скопировано $TEMP_COUNT файлов"
+
+echo ""
+echo "📋 Результаты копирования:"
+echo "  📁 bitstreams/ : $(find "$BITSTREAMS_DIR" -maxdepth 1 -type f 2>/dev/null | wc -l) файлов"
+echo "  📁 synthesis/  : $(find "$SYNTHESIS_DIR" -maxdepth 1 -type f 2>/dev/null | wc -l) файлов"
+echo "  📁 reports/    : $(find "$REPORTS_DIR" -maxdepth 1 -type f 2>/dev/null | wc -l) файлов"
+echo "  📁 build/      : $(find "$BUILD_DIR" -maxdepth 1 -type f 2>/dev/null | wc -l) файлов"
+echo "  📁 temp/       : $(find "$TEMP_DIR" -type f 2>/dev/null | wc -l) файлов"
+
+# Показываем главные результаты
+echo ""
+echo "🎯 Основные результаты:"
+if ls "$BITSTREAMS_DIR"/*.bit >/dev/null 2>&1; then
+    echo "  ✅ Битстрим: $(ls "$BITSTREAMS_DIR"/*.bit | head -1)"
+    ls -lh "$BITSTREAMS_DIR"/*.bit | awk '{print "     Размер: " $5}'
 fi
 
-if [ ! -f "$SRC_DIR/pinout.ucf" ]; then
-    echo "ОШИБКА: Файл $SRC_DIR/pinout.ucf не найден!"
-    exit 1
+if ls "$REPORTS_DIR"/*summary* >/dev/null 2>&1; then
+    echo "  📊 Сводка: $(ls "$REPORTS_DIR"/*summary* | head -1)"
 fi
 
-# Копируем файлы для сборки
-cp "$SRC_DIR/$PROJECT_NAME.v" .
-cp "$SRC_DIR/pinout.ucf" .
-
-# Создаем XST скрипт
-cat > "$PROJECT_NAME.xst" << XSTEOF
-set -tmpdir "xst/projnav.tmp"
-set -xsthdpdir "xst"
-run
--ifn $PROJECT_NAME.prj
--ifmt mixed
--ofn $PROJECT_NAME
--ofmt NGC
--p xc6slx25-ftg256-3
--top $PROJECT_NAME
--opt_mode Speed
--opt_level 1
--power NO
--iuc NO
--keep_hierarchy No
--netlist_hierarchy As_Optimized
--write_timing_constraints NO
--cross_clock_analysis NO
--hierarchy_separator /
--bus_delimiter <>
--case Maintain
--slice_utilization_ratio 100
--bram_utilization_ratio 100
--dsp_utilization_ratio 100
--lc Auto
--reduce_control_sets Auto
--fsm_extract YES
--fsm_encoding Auto
--safe_implementation No
--fsm_style LUT
--ram_extract Yes
--ram_style Auto
--rom_extract Yes
--shreg_extract YES
--rom_style Auto
--auto_bram_packing NO
--resource_sharing YES
--async_to_sync NO
--use_dsp48 Auto
--iobuf YES
--max_fanout 100000
--bufg 16
--register_duplication YES
--register_balancing No
--optimize_primitives NO
--use_clock_enable Auto
--use_sync_set Auto
--use_sync_reset Auto
--iob Auto
--equivalent_register_removal YES
--slice_utilization_ratio_maxmargin 5
-XSTEOF
-
-# Создаем PRJ файл
-echo "verilog work \"$PROJECT_NAME.v\"" > "$PROJECT_NAME.prj"
-
-echo "1. Синтез (XST)..."
-xst -intstyle ise -ifn "$PROJECT_NAME.xst" -ofn "$PROJECT_NAME.syr"
-if [ $? -ne 0 ]; then
-    echo "ОШИБКА: Синтез не удался!"
-    exit 1
+if ls "$REPORTS_DIR"/*usage* >/dev/null 2>&1; then
+    echo "  📈 Использование ресурсов: $(ls "$REPORTS_DIR"/*usage* | head -1)"
 fi
 
-echo "2. NgdBuild..."
-ngdbuild -intstyle ise -dd _ngo -nt timestamp -uc pinout.ucf -p xc6slx25-ftg256-3 "$PROJECT_NAME.ngc" "$PROJECT_NAME.ngd"
-if [ $? -ne 0 ]; then
-    echo "ОШИБКА: NgdBuild не удался!"
-    exit 1
-fi
+echo ""
+echo "✅ Распределение файлов завершено успешно!"
+COPY_SCRIPT_EOF
 
-echo "3. MAP..."
-map -intstyle ise -p xc6slx25-ftg256-3 -w -logic_opt off -ol high -t 1 -xt 0 -register_duplication off -r 4 -global_opt off -mt off -ir off -pr off -lc off -power off -o "${PROJECT_NAME}_map.ncd" "$PROJECT_NAME.ngd" "$PROJECT_NAME.pcf"
-if [ $? -ne 0 ]; then
-    echo "ОШИБКА: MAP не удался!"
-    exit 1
-fi
+chmod +x "$PROJECT_NAME/scripts/copy_build_results.sh"
 
-echo "4. Place & Route..."
-par -w -intstyle ise -ol high -mt off "${PROJECT_NAME}_map.ncd" "$PROJECT_NAME.ncd" "$PROJECT_NAME.pcf"
-if [ $? -ne 0 ]; then
-    echo "ОШИБКА: Place & Route не удался!"
-    exit 1
-fi
-
-echo "5. Генерация битфайла..."
-bitgen -w "$PROJECT_NAME.ncd" "$PROJECT_NAME.bit"
-if [ $? -ne 0 ]; then
-    echo "ОШИБКА: Генерация битфайла не удалась!"
-    exit 1
-fi
-
-# Перемещаем результаты
-mv "$PROJECT_NAME.bit" "$BUILD_DIR/"
-[ -f "$PROJECT_NAME.mcs" ] && mv "$PROJECT_NAME.mcs" "$BUILD_DIR/"
-
-# Перемещаем временные файлы
-mv *.log *.ngc *.ngd *.ncd *.pcf *.map *.mrp *.par *.pad *.drc *.bgn *.xpi *.stx *.syr *.lso *.cmd_log *.ptwx *.unroutes *.xrpt *.html *.xml *.csv *.txt *.prj *.xst "$TEMP_DIR/" 2>/dev/null || true
-mv _ngo _xmsgs iseconfig xlnx_auto_0_xdb xst "$TEMP_DIR/" 2>/dev/null || true
-
-echo "========================================="
-echo "✅ КОМПИЛЯЦИЯ ЗАВЕРШЕНА УСПЕШНО!"
-echo "✅ Битфайл создан: $BUILD_DIR/$PROJECT_NAME.bit"
-ls -lh "$BUILD_DIR/$PROJECT_NAME.bit"
-echo "========================================="
-EOF
-
-chmod +x "$PROJECT_NAME/scripts/compile.sh"
-
-# Создаем Makefile
-cat > "$PROJECT_NAME/Makefile" << EOF
-# Makefile для FPGA проекта $PROJECT_NAME
-
-PROJECT_NAME = $PROJECT_NAME
-TOP_MODULE = $PROJECT_NAME
-VERILOG_SRC = src/$PROJECT_NAME.v
-UCF_FILE = src/pinout.ucf
-
-# Цели по умолчанию
-.PHONY: all clean build program help
-
-all: build
-
-# Сборка проекта
-build:
-	@echo "Сборка проекта \$(PROJECT_NAME)..."
-	@mkdir -p build
-	cd scripts && bash compile.sh
-
-# Программирование FPGA  
-program:
-	@echo "Программирование FPGA..."
-	@if [ -f build/\$(PROJECT_NAME).bit ]; then \\
-		echo "Используйте Impact или другой программатор для загрузки build/\$(PROJECT_NAME).bit"; \\
-	else \\
-		echo "Ошибка: файл build/\$(PROJECT_NAME).bit не найден. Сначала выполните 'make build'"; \\
-	fi
-
-# Очистка временных файлов
-clean:
-	@echo "Очистка временных файлов..."
-	rm -rf temp/*
-	rm -f *.log *.jou
-
-# Полная очистка (включая build)
-distclean: clean
-	@echo "Полная очистка..."
-	rm -rf build/*
-
-# Справка
-help:
-	@echo "Доступные команды:"
-	@echo "  make build    - собрать проект"
-	@echo "  make program  - запрограммировать FPGA"
-	@echo "  make clean    - очистить временные файлы"
-	@echo "  make distclean- полная очистка"
-	@echo "  make help     - показать эту справку"
-
-# Показать структуру проекта
-tree:
-	@echo "Структура проекта:"
-	@find . -type f -not -path "./temp/*" -not -path "./.git/*" | sort
-EOF
-
-# Создаем .gitignore
-cat > "$PROJECT_NAME/.gitignore" << 'EOF'
-# ISE и Vivado временные файлы
-temp/
-*.log
-*.jou
-*.backup
-*~
-
-# Файлы синтеза
-*.ngc
-*.ngd
-*.ngr
-*.ncd
-*.pcf
-*.bld
-*.mrp
-*.map
-*.par
-*.pad
-*.drc
-*.bgn
-*.xpi
-*.stx
-*.syr
-*.lso
-*.cmd_log
-*.ptwx
-*.unroutes
-*.xwbt
-
-# Отчеты
-*.xrpt
-*.html
-*.xml
-*.csv
-*.txt
-usage_statistics_webtalk.html
-
-# Служебные директории
-_xmsgs/
-_ngo/
-iseconfig/
-xlnx_auto_0_xdb/
-xst/
-.Xil/
-vivado*
-
-# Временные проектные файлы
-*.prj
-*.xst
-
-# OS файлы
-.DS_Store
-Thumbs.db
-
-# Резервные копии редакторов
-*.bak
-*.swp
-*.swo
-*~
-EOF
-
-# Создаем README.md
-cat > "$PROJECT_NAME/README.md" << EOF
-# $PROJECT_NAME
-
-Проект для FPGA $FPGA_TYPE.
-
-## Описание
-
-[Добавьте описание вашего проекта здесь]
-
-## Структура проекта
-
-### 📁 src/
-Исходные файлы проекта:
-- \`${PROJECT_NAME}.v\` - основной Verilog модуль
-- \`pinout.ucf\` - файл ограничений и назначения выводов
-
-### 📁 build/
-Готовые файлы для прошивки:
-- \`*.bit\` - битфайл для прошивки FPGA
-- \`*.mcs\` - файл прошивки в формате MCS
-
-### 📁 scripts/
-Скрипты сборки и конфигурации:
-- \`compile.sh\` - bash скрипт компиляции
-
-### 📁 temp/
-Временные файлы сборки (можно удалить после успешной сборки):
-- Отчеты синтеза и имплементации
-- Логи компиляции
-- Служебные директории ISE
-
-### 📁 docs/
-Документация проекта
-
-## Быстрый старт
-
-1. Отредактируйте \`src/pinout.ucf\` - укажите правильные пины для вашей платы
-2. При необходимости измените параметры в \`src/${PROJECT_NAME}.v\`
-3. Соберите проект: \`make build\`
-4. Прошейте FPGA файлом \`build/${PROJECT_NAME}.bit\`
-
-## Сборка
-
-\`\`\`bash
-# Сборка проекта
-make build
-
-# Очистка временных файлов
-make clean
-
-# Полная очистка
-make distclean
-
-# Справка
-make help
-\`\`\`
-
-## Технические характеристики
-
-- **FPGA**: $FPGA_TYPE ($DEVICE)
-- **Тактовая частота**: ${CLK_FREQ} МГц
-- **Инструменты**: Xilinx ISE
-
-## Примечания
-
-⚠️ **Важно**: Обязательно проверьте и исправьте назначение пинов в файле \`src/pinout.ucf\` в соответствии с вашей платой!
-
-## Автор
-
-[Ваше имя]
-
-## Лицензия
-
-[Укажите лицензию]
-EOF
-
-# Создаем пустой файл для документации
+# Создаем пустые файлы для сохранения структуры папок в git
 touch "$PROJECT_NAME/docs/.gitkeep"
+touch "$PROJECT_NAME/bitstreams/.gitkeep" 
+touch "$PROJECT_NAME/reports/.gitkeep"
+touch "$PROJECT_NAME/synthesis/.gitkeep"
+touch "$PROJECT_NAME/temp/.gitkeep"
 
 echo ""
-echo -e "${GREEN}✅ Проект '$PROJECT_NAME' успешно создан!${NC}"
+echo -e "${GREEN}✅ Проект '$PROJECT_NAME' с поддержкой TerosHDL успешно создан!${NC}"
 echo ""
-echo -e "${YELLOW}Следующие шаги:${NC}"
+echo -e "${YELLOW}🎯 Следующие шаги:${NC}"
 echo -e "1. ${BLUE}cd $PROJECT_NAME${NC}"
-echo -e "2. ${BLUE}Отредактируйте src/pinout.ucf для вашей платы${NC}"
-echo -e "3. ${BLUE}make build${NC} - для сборки проекта"
+echo -e "2. ${BLUE}code .${NC} - открыть в VS Code"
+echo -e "3. ${BLUE}Отредактируйте src/pinout.ucf для вашей платы${NC}"
+echo -e "4. ${BLUE}Используйте TerosHDL для сборки проекта${NC}"
+echo -e "5. ${BLUE}./scripts/copy_build_results.sh${NC} - для организации результатов"
 echo ""
-echo -e "${YELLOW}Структура проекта:${NC}"
-find "$PROJECT_NAME" -type f | sed 's/^/  /' | sort
+echo -e "${GREEN}🎉 Готово! Используйте TerosHDL для сборки проектов.${NC}"
+
+# Функция для добавления проекта в TerosHDL
+add_project_to_teroshdl() {
+    local project_name="$1"
+    local project_path="$2"
+    local toplevel_file="$3"
+    local constraint_file="$4"
+    local device="$5"
+    local family="$6"
+    local package="$7"
+    local speed="$8"
+    
+    local teroshdl_config="/root/.teroshdl2_prj.json"
+    
+    echo -e "${BLUE}🔗 Интеграция с TerosHDL...${NC}"
+    
+    # Проверяем существование файла конфигурации TerosHDL
+    if [ ! -f "$teroshdl_config" ]; then
+        echo -e "${YELLOW}⚠️  Файл конфигурации TerosHDL не найден, создаем новый...${NC}"
+        # Создаем базовую структуру если файла нет
+        cat > "$teroshdl_config" << TEROSHDL_BASE
+{
+    "selected_project": "$project_name",
+    "project_list": []
+}
+TEROSHDL_BASE
+    fi
+    
+    # Создаем новый проект для добавления
+    local new_project=$(cat << NEW_PROJECT_JSON
+{
+    "name": "$project_name",
+    "project_disk_path": "",
+    "project_type": "genericProject",
+    "toplevel": "$toplevel_file",
+    "files": [
+        {
+            "name": "$toplevel_file",
+            "file_type": "verilogSource",
+            "is_include_file": false,
+            "include_path": "",
+            "logical_name": "",
+            "is_manual": false,
+            "file_version": "2000",
+            "source_type": "none"
+        },
+        {
+            "name": "$constraint_file",
+            "file_type": "none",
+            "is_include_file": false,
+            "include_path": "",
+            "logical_name": "",
+            "is_manual": true,
+            "source_type": "none"
+        }
+    ],
+    "hooks": {
+        "pre_build": [],
+        "post_build": [],
+        "pre_run": [],
+        "post_run": []
+    },
+    "watchers": [],
+    "configuration": {},
+    "tool_options": {
+        "ise": {
+            "name": "ise",
+            "installation_path": "/opt/Xilinx/14.7/ISE_DS",
+            "config": {
+                "installation_path": "/opt/Xilinx/14.7/ISE_DS",
+                "family": "$family",
+                "device": "${device%%-*}",
+                "package": "$package", 
+                "speed": "$speed"
+            }
+        }
+    }
+}
+NEW_PROJECT_JSON
+)
+    
+    # Проверяем, не существует ли уже проект с таким именем
+    local existing_project=$(jq -r ".project_list[] | select(.name == \"$project_name\") | .name" "$teroshdl_config" 2>/dev/null)
+    
+    if [ "$existing_project" = "$project_name" ]; then
+        echo -e "${YELLOW}⚠️  Проект '$project_name' уже существует в TerosHDL, обновляем...${NC}"
+        # Удаляем существующий проект и добавляем новый
+        jq --argjson new_project "$new_project" \
+           --arg project_name "$project_name" \
+           '.project_list = (.project_list | map(select(.name != $project_name))) + [$new_project] | .selected_project = $project_name' \
+           "$teroshdl_config" > "${teroshdl_config}.tmp" && mv "${teroshdl_config}.tmp" "$teroshdl_config"
+    else
+        echo -e "${GREEN}➕ Добавляем новый проект '$project_name' в TerosHDL...${NC}"
+        # Добавляем новый проект
+        jq --argjson new_project "$new_project" \
+           --arg project_name "$project_name" \
+           '.project_list += [$new_project] | .selected_project = $project_name' \
+           "$teroshdl_config" > "${teroshdl_config}.tmp" && mv "${teroshdl_config}.tmp" "$teroshdl_config"
+    fi
+    
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✅ Проект успешно добавлен в TerosHDL!${NC}"
+        echo -e "${BLUE}📋 Текущий активный проект в TerosHDL: ${YELLOW}$project_name${NC}"
+        
+        # Показываем количество проектов
+        local project_count=$(jq '.project_list | length' "$teroshdl_config")
+        echo -e "${BLUE}📊 Всего проектов в TerosHDL: ${YELLOW}$project_count${NC}"
+    else
+        echo -e "${RED}❌ Ошибка при добавлении проекта в TerosHDL${NC}"
+        return 1
+    fi
+}
+
+# Вызываем функцию интеграции с TerosHDL
 echo ""
-echo -e "${GREEN}Готово! 🎉${NC}"
+PROJECT_FULL_PATH="$(pwd)/$PROJECT_NAME"
+TOPLEVEL_FILE="$PROJECT_FULL_PATH/src/${PROJECT_NAME}.v"
+CONSTRAINT_FILE="$PROJECT_FULL_PATH/src/pinout.ucf"
+
+add_project_to_teroshdl "$PROJECT_NAME" "$PROJECT_FULL_PATH" "$TOPLEVEL_FILE" "$CONSTRAINT_FILE" "$DEVICE" "$FAMILY" "$PACKAGE" "$SPEED"
+
+echo ""
+echo -e "${GREEN}🎉 Проект готов к работе в TerosHDL!${NC}"
+echo -e "${BLUE}💡 Откройте VS Code и используйте расширение TerosHDL для работы с проектом.${NC}"
