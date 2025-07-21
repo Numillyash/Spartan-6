@@ -1,0 +1,10 @@
+# Keep documentation files
+!*.md
+!*.txt
+!*.pdf
+!*.doc
+!*.docx
+
+# But ignore generated documentation
+*_autogen.*
+*_generated.*

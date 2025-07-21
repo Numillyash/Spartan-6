@@ -1,0 +1,8 @@
+# Keep all source files
+!*.v
+!*.vhd
+!*.vhdl
+!*.sv
+!*.ucf
+!*.xdc
+!*.sdc

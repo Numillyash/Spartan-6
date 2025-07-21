@@ -1,0 +1,10 @@
+# Ignore all temporary files and directories
+*
+!.gitignore
+
+# Specifically ignore common temp directories
+_ngo/
+_xmsgs/
+xlnx_auto_*_xdb/
+xst/
+iseconfig/

@@ -1,0 +1,13 @@
+# Ignore synthesis intermediate files
+*.ngc
+*.ngd
+*.ncd
+*.pcf
+*.bld
+*.syr
+*.log
+*_guide.ncd
+*_map.ncd
+*.xst
+*.prj
+*.lso

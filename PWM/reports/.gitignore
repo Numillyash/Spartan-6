@@ -1,0 +1,18 @@
+# Keep only main_pad files as requested
+!main_pad.*
+
+# Ignore all other report files
+*.html
+*.xml
+*.txt
+*.csv
+*.map
+*.mrp
+*.par
+*.xrpt
+*.twr
+*.twx
+
+# But ignore everything else first
+*
+!.gitignore

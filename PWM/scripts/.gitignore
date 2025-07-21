@@ -1,0 +1,7 @@
+# Keep all scripts and configuration files
+!*.ps1
+!*.sh
+!*.cfg
+!*.tcl
+!*.bat
+!*.py

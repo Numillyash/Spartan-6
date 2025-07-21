@@ -1,0 +1,29 @@
+# Ignore all build artifacts and temporary files
+*.bgn
+*.bld
+*.cmd_log
+*.drc
+*.lso
+*.ncd
+*.ngc
+*.ngd
+*.ngr
+*.pad
+*.par
+*.pcf
+*.prj
+*.ptwx
+*.stx
+*.syr
+*.unroutes
+*.xpi
+*.xst
+*.ise
+*.gise
+*.xise
+
+# Ignore ISE project files
+*.log
+*.tmp
+webtalk.log
+*.lock

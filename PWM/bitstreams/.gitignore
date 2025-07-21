@@ -1,0 +1,8 @@
+# Keep compiled bitstreams
+!*.bit
+!*.mcs
+!*.bit.tags
+
+# Ignore everything else
+*
+!.gitignore
