@@ -9,34 +9,34 @@
  */
 
 module PWM (
-    input  wire clk,            // Тактовая частота 25 МГц
-    input  wire[7:0] duty_cycle, // Ширина импульса (0-255)
-    output wire led             // Выходной светодиод
-  );
+        input  wire clk,            // Тактовая частота 25 МГц
+        input  wire[7:0] duty_cycle, // Ширина импульса (0-255)
+        output wire out             // Выходной светодиод
+    );
 
-  // Внутренние сигналы
-  reg [7:0] pwm_counter;
-  reg led_reg;
+    // Внутренние сигналы
+    reg [7:0] pwm_counter;
+    reg out_reg;
 
-  // Инициализация
-  initial
-  begin
-    pwm_counter <= 0;
-    led_reg <= 1'b1;
-  end
+    // Инициализация
+    initial
+    begin
+        pwm_counter <= 0;
+        out_reg <= 1'b0;
+    end
 
-  // Основная логика
-  always @(posedge clk)
-  begin
-    pwm_counter <= pwm_counter + 1;
-    // Сравниваем с коэффициентом заполнения
-    if (pwm_counter < duty_cycle)
-      led_reg <= 1'b0;
-    else
-      led_reg <= 1'b1;
-  end
+    // Основная логика
+    always @(posedge clk)
+    begin
+        pwm_counter <= pwm_counter + 1;
+        // Сравниваем с коэффициентом заполнения
+        if (pwm_counter < duty_cycle)
+            out_reg <= 1'b1;
+        else
+            out_reg <= 1'b0;
+    end
 
-  // Выходы
-  assign led = led_reg;
+    // Выходы
+    assign out = out_reg;
 
 endmodule

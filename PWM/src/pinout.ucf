@@ -1,7 +1,6 @@
-# Файл ограничений для проекта sevenSeg
+# Файл ограничений для проекта PWM
 # FPGA: xc6slx25-ftg256-3
 # Дата создания: 2025-07-19
-# Пины взяты из рабочего проекта в папке ../1
 
 # Тактовая частота (25 МГц клок)
 NET "clk" LOC = J6;
@@ -9,9 +8,9 @@ NET "clk" IOSTANDARD = LVCMOS18;
 NET "clk" TNM_NET = "clk";
 TIMESPEC TS_clk = PERIOD "clk" 25 MHz HIGH 50%;
 
-# # Светодиод (используем fpga_led)
-# NET "led" LOC = F16;
-# NET "led" IOSTANDARD = LVCMOS33;
+# Светодиод (используем fpga_led)
+NET "led" LOC = F16;
+NET "led" IOSTANDARD = LVCMOS33;
 
 # Отладочный вывод (используем зеленый светодиод)
 NET "led_green" LOC = R9;
@@ -25,8 +24,54 @@ NET "led_blue" IOSTANDARD = LVCMOS33;
 NET "led_red" LOC = T9;
 NET "led_red" IOSTANDARD = LVCMOS33;
 
-NET "debug_led" LOC = H16;
-NET "debug_led" IOSTANDARD = LVCMOS33;
+# # Назначение пинов модуля k_board (kbd)
+# # Blue -- right column
+# NET "col_power_b" LOC = H16;
+# NET "col_power_b" IOSTANDARD = LVCMOS33;
+# # Green -- middle column
+# NET "col_power_g" LOC = H15;
+# NET "col_power_g" IOSTANDARD = LVCMOS33;
+# # Red -- left column
+# NET "col_power_r" LOC = J16;
+# NET "col_power_r" IOSTANDARD = LVCMOS33;
+
+# # ------00 4-th row
+# NET "col_data_4" LOC = K15;
+# NET "col_data_4" IOSTANDARD = LVCMOS33;
+# NET "col_data_4" PULLUP;
+# # ----00-- 3-d row
+# NET "col_data_3" LOC = K16;
+# NET "col_data_3" IOSTANDARD = LVCMOS33;
+# NET "col_data_3" PULLUP;
+# # --00---- 2-nd row
+# NET "col_data_2" LOC = M15;
+# NET "col_data_2" IOSTANDARD = LVCMOS33;
+# NET "col_data_2" PULLUP;
+# # 00------ 1-st row
+# NET "col_data_1" LOC = M16;
+# NET "col_data_1" IOSTANDARD = LVCMOS33;
+# NET "col_data_1" PULLUP;
+
+# Назначение пинов модуля k_board (kbd)
+NET "col_power[2]" LOC = H16;
+NET "col_power[2]" IOSTANDARD = LVCMOS33;
+NET "col_power[1]" LOC = H15;
+NET "col_power[1]" IOSTANDARD = LVCMOS33;
+NET "col_power[0]" LOC = J16;
+NET "col_power[0]" IOSTANDARD = LVCMOS33;
+
+NET "col_data[3]" LOC = K15; #P5
+NET "col_data[3]" IOSTANDARD = LVCMOS33;
+NET "col_data[3]" PULLDOWN;
+NET "col_data[2]" LOC = K16; #P6
+NET "col_data[2]" IOSTANDARD = LVCMOS33;
+NET "col_data[2]" PULLDOWN;
+NET "col_data[1]" LOC = M15;
+NET "col_data[1]" IOSTANDARD = LVCMOS33;
+NET "col_data[1]" PULLDOWN;
+NET "col_data[0]" LOC = M16;
+NET "col_data[0]" IOSTANDARD = LVCMOS33;
+NET "col_data[0]" PULLDOWN;
 
 # Дополнительные ограничения
 # Добавьте здесь свои ограничения по мере необходимости
