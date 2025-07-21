@@ -1,2 +1,0 @@
-xst -intstyle ise -ifn "/root/spartan6/PWM/scripts/main.xst" -ofn "/root/spartan6/PWM/scripts/main.syr" 
-ngdbuild -intstyle ise -dd _ngo -nt timestamp -uc /root/spartan6/PWM/src/pinout.ucf -p xc6slx25-ftg256-3 main.ngc main.ngd  
